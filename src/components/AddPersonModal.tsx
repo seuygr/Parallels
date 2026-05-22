@@ -10,7 +10,8 @@ interface Props {
   onClose: () => void
 }
 
-interface SearchResult {
+interface LocalResult {
+  source: 'local'
   id: string
   name: string
   bornYear: number
@@ -20,6 +21,15 @@ interface SearchResult {
   type: string
   color: string
 }
+
+interface WikidataResult {
+  source: 'wikidata'
+  wikidataId: string
+  name: string
+  description: string
+}
+
+type SearchResult = LocalResult | WikidataResult
 
 export default function AddPersonModal({ onClose }: Props) {
   const [query, setQuery] = useState('')
@@ -37,7 +47,10 @@ export default function AddPersonModal({ onClose }: Props) {
       setLoading(true)
       try {
         const res = await fetch(`/api/persons/search?q=${encodeURIComponent(query)}`)
-        setResults(await res.json())
+        const data = await res.json()
+        const local: LocalResult[] = (data.local ?? []).map((p: Omit<LocalResult, 'source'>) => ({ ...p, source: 'local' as const }))
+        const wikidata: WikidataResult[] = (data.wikidata ?? []).map((p: Omit<WikidataResult, 'source'>) => ({ ...p, source: 'wikidata' as const }))
+        setResults([...local, ...wikidata])
       } finally {
         setLoading(false)
       }
@@ -45,33 +58,53 @@ export default function AddPersonModal({ onClose }: Props) {
     return () => clearTimeout(t)
   }, [query])
 
-  const alreadyAdded = (r: SearchResult) =>
-    persons.some((p) => p.id === r.id || p.name.toLowerCase() === r.name.toLowerCase())
-
   const nextColor = () => {
     const used = new Set(persons.map((p) => p.color))
     return COLORS.find((c) => !used.has(c)) ?? COLORS[persons.length % COLORS.length]
   }
 
+  const isAdded = (r: SearchResult) => {
+    if (r.source === 'local') return persons.some((p) => p.id === r.id)
+    return persons.some((p) => p.name.toLowerCase() === r.name.toLowerCase())
+  }
+
   const handleAdd = async (r: SearchResult) => {
-    if (alreadyAdded(r)) return
-    setAdding(r.id)
+    if (isAdded(r)) return
+    const key = r.source === 'local' ? r.id : r.wikidataId
+    setAdding(key)
+    const color = nextColor()
+
     try {
-      const res = await fetch(`/api/persons/${r.id}/events`)
-      const events: LifeEvent[] = await res.json()
-      const person: Person = {
-        id: r.id,
-        name: r.name,
-        bornYear: r.bornYear,
-        diedYear: r.diedYear,
-        bornCity: r.bornCity ?? '',
-        bornCountry: r.bornCountry ?? '',
-        type: r.type as 'famous' | 'personal',
-        color: r.color || nextColor(),
+      if (r.source === 'local') {
+        const res = await fetch(`/api/persons/${r.id}/events`)
+        const events: LifeEvent[] = await res.json()
+        addPerson({ id: r.id, name: r.name, bornYear: r.bornYear, diedYear: r.diedYear, bornCity: r.bornCity ?? '', bornCountry: r.bornCountry ?? '', type: r.type as 'famous' | 'personal', color: r.color || color })
+        addEvents(events)
+      } else {
+        // Fetch from Wikidata and save to DB
+        const res = await fetch('/api/persons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wikidataId: r.wikidataId, name: r.name, color }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'Failed to add person')
+        const person: Person = {
+          id: data.id,
+          name: data.name,
+          bornYear: data.bornYear,
+          diedYear: data.diedYear,
+          bornCity: data.bornCity ?? '',
+          bornCountry: data.bornCountry ?? '',
+          type: data.type,
+          color: data.color,
+        }
+        addPerson(person)
+        addEvents(data.events ?? [])
       }
-      addPerson(person)
-      addEvents(events)
       onClose()
+    } catch (err) {
+      console.error('Failed to add person:', err)
     } finally {
       setAdding(null)
     }
@@ -106,11 +139,12 @@ export default function AddPersonModal({ onClose }: Props) {
             <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>No results found.</div>
           )}
           {results.map((r) => {
-            const added = alreadyAdded(r)
-            const isAdding = adding === r.id
+            const key = r.source === 'local' ? r.id : r.wikidataId
+            const added = isAdded(r)
+            const isAdding = adding === key
             return (
               <button
-                key={r.id}
+                key={key}
                 onClick={() => handleAdd(r)}
                 disabled={added || isAdding}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
@@ -123,11 +157,20 @@ export default function AddPersonModal({ onClose }: Props) {
                 onMouseEnter={(e) => { if (!added) (e.currentTarget as HTMLElement).style.background = '#2A2A3A' }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: r.color || '#94A3B8' }} />
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: r.source === 'local' ? r.color : '#94A3B8' }} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate" style={{ color: '#F1F1F5' }}>{r.name}</div>
-                  <div className="text-xs" style={{ color: '#94A3B8' }}>
-                    {r.bornYear}–{r.diedYear ?? 'present'} · {r.bornCountry ?? ''}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm truncate" style={{ color: '#F1F1F5' }}>{r.name}</span>
+                    {r.source === 'wikidata' && (
+                      <span className="text-xs px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: '#2A2A3A', color: '#94A3B8' }}>
+                        Wikidata
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs truncate" style={{ color: '#94A3B8' }}>
+                    {r.source === 'local'
+                      ? `${r.bornYear}–${r.diedYear ?? 'present'} · ${r.bornCountry ?? ''}`
+                      : r.description}
                   </div>
                 </div>
                 <span className="text-xs flex-shrink-0" style={{ color: '#94A3B8' }}>
