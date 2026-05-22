@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCanvasStore } from '@/store/canvas'
 import TimelineCanvas from '@/components/timeline/TimelineCanvas'
@@ -11,7 +11,9 @@ import AddPersonModal from '@/components/AddPersonModal'
 
 export default function CanvasPage() {
   const router = useRouter()
-  const { persons, visibleRange, setVisibleRange } = useCanvasStore()
+  const { persons, visibleRange, setVisibleRange, loadPublicPersons } = useCanvasStore()
+
+  useEffect(() => { loadPublicPersons() }, [])
   const [selectedEvent, setSelectedEvent] = useState<LifeEvent | null>(null)
   const [selectedIntersection, setSelectedIntersection] = useState<Intersection | null>(null)
   const [showAddPerson, setShowAddPerson] = useState(false)
