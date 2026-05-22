@@ -2,18 +2,33 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useCanvasStore } from '@/store/canvas'
 import TimelineCanvas from '@/components/timeline/TimelineCanvas'
 import StoryCard from '@/components/StoryCard'
 import IntersectionPanel from '@/components/IntersectionPanel'
 import { LifeEvent, Intersection } from '@/types'
 import AddPersonModal from '@/components/AddPersonModal'
+import { createClient } from '@/utils/supabase/client'
 
 export default function CanvasPage() {
   const router = useRouter()
   const { persons, visibleRange, setVisibleRange, loadPublicPersons } = useCanvasStore()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => { loadPublicPersons() }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null))
+  }, [])
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setUserEmail(null)
+    router.refresh()
+  }
   const [selectedEvent, setSelectedEvent] = useState<LifeEvent | null>(null)
   const [selectedIntersection, setSelectedIntersection] = useState<Intersection | null>(null)
   const [showAddPerson, setShowAddPerson] = useState(false)
@@ -65,10 +80,24 @@ export default function CanvasPage() {
           </button>
         </div>
 
-        <button className="px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ background: '#2A2A3A', color: '#F1F1F5' }}>
-          Share
-        </button>
+        <div className="flex items-center gap-3">
+          {userEmail ? (
+            <>
+              <span className="text-xs" style={{ color: '#94A3B8' }}>{userEmail}</span>
+              <button
+                onClick={handleSignOut}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                style={{ background: '#2A2A3A', color: '#F1F1F5' }}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <Link href="/signin" className="px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: '#2A2A3A', color: '#F1F1F5' }}>
+              Sign in
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Legend */}
