@@ -7,12 +7,14 @@ import TimelineCanvas from '@/components/timeline/TimelineCanvas'
 import StoryCard from '@/components/StoryCard'
 import IntersectionPanel from '@/components/IntersectionPanel'
 import { LifeEvent, Intersection } from '@/types'
+import AddPersonModal from '@/components/AddPersonModal'
 
 export default function CanvasPage() {
   const router = useRouter()
   const { persons, visibleRange, setVisibleRange } = useCanvasStore()
   const [selectedEvent, setSelectedEvent] = useState<LifeEvent | null>(null)
   const [selectedIntersection, setSelectedIntersection] = useState<Intersection | null>(null)
+  const [showAddPerson, setShowAddPerson] = useState(false)
 
   const selectedPerson = selectedEvent
     ? persons.find((p) => p.id === selectedEvent.personId) ?? null
@@ -40,7 +42,9 @@ export default function CanvasPage() {
             style={{ color: '#94A3B8' }}>
             ← Back
           </button>
-          <button className="px-3 py-1.5 rounded-lg text-xs font-medium"
+          <button
+            onClick={() => setShowAddPerson(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium"
             style={{ background: '#2A2A3A', color: '#F1F1F5' }}>
             + Add person
           </button>
@@ -103,6 +107,7 @@ export default function CanvasPage() {
       </div>
 
       {/* Modals */}
+      {showAddPerson && <AddPersonModal onClose={() => setShowAddPerson(false)} />}
       <StoryCard
         event={selectedEvent}
         person={selectedPerson}

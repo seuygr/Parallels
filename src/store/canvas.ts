@@ -9,6 +9,7 @@ interface CanvasStore {
   selectedEvent: LifeEvent | null
   selectedIntersection: Intersection | null
   addPerson: (person: Person) => void
+  addEvents: (events: LifeEvent[]) => void
   setVisibleRange: (range: { start: number; end: number }) => void
   setSelectedEvent: (event: LifeEvent | null) => void
   setSelectedIntersection: (intersection: Intersection | null) => void
@@ -24,7 +25,14 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedIntersection: null,
 
   addPerson: (person) =>
-    set((state) => ({ persons: [...state.persons, person] })),
+    set((state) =>
+      state.persons.some((p) => p.id === person.id)
+        ? state
+        : { persons: [...state.persons, person] }
+    ),
+
+  addEvents: (newEvents) =>
+    set((state) => ({ events: [...state.events, ...newEvents] })),
 
   setVisibleRange: (range) => set({ visibleRange: range }),
 
