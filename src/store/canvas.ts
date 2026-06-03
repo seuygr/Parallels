@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { Person, LifeEvent, Intersection } from '@/types'
 
+const CURRENT_YEAR = new Date().getFullYear()
+
 interface CanvasStore {
   persons: Person[]
   events: LifeEvent[]
@@ -11,6 +13,10 @@ interface CanvasStore {
   loadPublicPersons: () => Promise<void>
   addPerson: (person: Person) => void
   addEvents: (events: LifeEvent[]) => void
+  removePerson: (id: string) => void
+  setLoaded: (loaded: boolean) => void
+  reset: () => void
+  fitToPersons: () => void
   setVisibleRange: (range: { start: number; end: number }) => void
   setSelectedEvent: (event: LifeEvent | null) => void
   setSelectedIntersection: (intersection: Intersection | null) => void
@@ -18,11 +24,13 @@ interface CanvasStore {
   pan: (deltaYears: number) => void
 }
 
+const DEFAULT_RANGE = { start: 1700, end: 2030 }
+
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   persons: [],
   events: [],
   loaded: false,
-  visibleRange: { start: 1700, end: 2030 },
+  visibleRange: DEFAULT_RANGE,
   selectedEvent: null,
   selectedIntersection: null,
 
@@ -42,6 +50,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     }))
     const events: LifeEvent[] = data.flatMap((p: Person & { events: LifeEvent[] }) => p.events)
     set({ persons, events, loaded: true })
+    get().fitToPersons()
   },
 
   addPerson: (person) =>
@@ -53,6 +62,26 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   addEvents: (newEvents) =>
     set((state) => ({ events: [...state.events, ...newEvents] })),
+
+  removePerson: (id) =>
+    set((state) => ({
+      persons: state.persons.filter((p) => p.id !== id),
+      events: state.events.filter((e) => e.personId !== id),
+    })),
+
+  setLoaded: (loaded) => set({ loaded }),
+
+  reset: () => set({ persons: [], events: [], loaded: false, visibleRange: DEFAULT_RANGE }),
+
+  fitToPersons: () => {
+    const { persons } = get()
+    if (persons.length === 0) return
+    const minYear = Math.min(...persons.map((p) => p.bornYear))
+    const maxYear = Math.max(...persons.map((p) => p.diedYear ?? CURRENT_YEAR))
+    const span = maxYear - minYear
+    const padding = Math.max(span * 0.15, 10)
+    set({ visibleRange: { start: minYear - padding, end: maxYear + padding } })
+  },
 
   setVisibleRange: (range) => set({ visibleRange: range }),
   setSelectedEvent: (event) => set({ selectedEvent: event }),

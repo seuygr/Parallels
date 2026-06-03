@@ -7,13 +7,14 @@ import { useCanvasStore } from '@/store/canvas'
 import TimelineCanvas from '@/components/timeline/TimelineCanvas'
 import StoryCard from '@/components/StoryCard'
 import IntersectionPanel from '@/components/IntersectionPanel'
-import { LifeEvent, Intersection } from '@/types'
 import AddPersonModal from '@/components/AddPersonModal'
+import AddEventModal from '@/components/AddEventModal'
+import { LifeEvent, Intersection, Person } from '@/types'
 import { createClient } from '@/utils/supabase/client'
 
 export default function CanvasPage() {
   const router = useRouter()
-  const { persons, visibleRange, setVisibleRange, loadPublicPersons } = useCanvasStore()
+  const { persons, visibleRange, setVisibleRange, loadPublicPersons, removePerson } = useCanvasStore()
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => { loadPublicPersons() }, [])
@@ -29,9 +30,11 @@ export default function CanvasPage() {
     setUserEmail(null)
     router.refresh()
   }
+
   const [selectedEvent, setSelectedEvent] = useState<LifeEvent | null>(null)
   const [selectedIntersection, setSelectedIntersection] = useState<Intersection | null>(null)
   const [showAddPerson, setShowAddPerson] = useState(false)
+  const [addEventPerson, setAddEventPerson] = useState<Person | null>(null)
 
   const selectedPerson = selectedEvent
     ? persons.find((p) => p.id === selectedEvent.personId) ?? null
@@ -104,9 +107,17 @@ export default function CanvasPage() {
       <div className="flex items-center gap-6 px-6 py-2 flex-shrink-0"
         style={{ borderBottom: '1px solid #2A2A3A22' }}>
         {persons.map((p) => (
-          <div key={p.id} className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full" style={{ background: p.color }} />
+          <div key={p.id} className="flex items-center gap-2 group">
+            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: p.color }} />
             <span className="text-xs" style={{ color: '#94A3B8' }}>{p.name}</span>
+            <button
+              onClick={() => removePerson(p.id)}
+              className="text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: '#64748B' }}
+              title="Remove from canvas"
+            >
+              ×
+            </button>
           </div>
         ))}
         <span className="text-xs ml-auto" style={{ color: '#94A3B8' }}>
@@ -119,6 +130,7 @@ export default function CanvasPage() {
         <TimelineCanvas
           onEventClick={setSelectedEvent}
           onIntersectionClick={setSelectedIntersection}
+          onAddEvent={setAddEventPerson}
         />
       </div>
 
@@ -139,6 +151,12 @@ export default function CanvasPage() {
 
       {/* Modals */}
       {showAddPerson && <AddPersonModal onClose={() => setShowAddPerson(false)} />}
+      {addEventPerson && (
+        <AddEventModal
+          person={addEventPerson}
+          onClose={() => setAddEventPerson(null)}
+        />
+      )}
       <StoryCard
         event={selectedEvent}
         person={selectedPerson}

@@ -3,10 +3,10 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { useCanvasStore } from '@/store/canvas'
 import { computeAllIntersections } from '@/lib/intersection'
-import { LifeEvent, Intersection } from '@/types'
+import { LifeEvent, Intersection, Person } from '@/types'
 
 const LABEL_WIDTH = 180
-const TRACK_HEIGHT = 80
+const TRACK_HEIGHT = 90
 const TRACK_TOP = 48
 const RULER_HEIGHT = 40
 const DOT_RADIUS = 5
@@ -15,9 +15,10 @@ const CURRENT_YEAR = new Date().getFullYear()
 interface Props {
   onEventClick: (event: LifeEvent) => void
   onIntersectionClick: (intersection: Intersection) => void
+  onAddEvent?: (person: Person) => void
 }
 
-export default function TimelineCanvas({ onEventClick, onIntersectionClick }: Props) {
+export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAddEvent }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(1000)
   const { persons, events, visibleRange, zoom, pan } = useCanvasStore()
@@ -162,6 +163,7 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick }: Pr
           const barX2 = Math.min(yearToX(personEnd), width)
           const barWidth = Math.max(0, barX2 - barX1)
           const personEvents = events.filter((e) => e.personId === person.id)
+          const isPersonal = person.type === 'personal'
 
           return (
             <g key={person.id}>
@@ -176,6 +178,19 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick }: Pr
                 fontFamily="Inter, sans-serif">
                 {person.bornYear} – {person.diedYear ?? 'present'}
               </text>
+
+              {/* + add event (personal tracks only) */}
+              {isPersonal && onAddEvent && (
+                <text
+                  x={LABEL_WIDTH - 12} y={trackY + 54}
+                  textAnchor="end" fill={person.color} fontSize={10}
+                  fontFamily="Inter, sans-serif"
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); onAddEvent(person) }}
+                >
+                  + add event
+                </text>
+              )}
 
               {/* Track background strip */}
               <rect x={LABEL_WIDTH} y={trackY + 16} width={canvasWidth}
@@ -208,7 +223,6 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick }: Pr
                       fill="transparent" />
                     <circle cx={ex} cy={trackY + 18} r={DOT_RADIUS}
                       fill={person.color} stroke="#0A0A0F" strokeWidth={1.5} />
-                    {/* Tooltip on hover handled via title */}
                     <title>{event.year} — {event.title}</title>
                   </g>
                 )

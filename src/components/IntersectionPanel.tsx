@@ -1,31 +1,47 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Intersection } from '@/types'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+
+interface WorldEvent {
+  year: number
+  label: string
+}
 
 interface IntersectionPanelProps {
   intersection: Intersection | null
   onClose: () => void
 }
 
-const WORLD_EVENTS: Record<string, { year: number; label: string }[]> = {
-  'churchill-mj': [
-    { year: 1962, label: 'Cuban Missile Crisis' },
-    { year: 1963, label: 'JFK Assassination' },
-    { year: 1964, label: 'Civil Rights Act (USA)' },
-    { year: 1965, label: 'Churchill passes away' },
-  ],
-}
-
-function getWorldEvents(intersection: Intersection) {
-  const key = `${intersection.personA.id}-${intersection.personB.id}`
-  return WORLD_EVENTS[key] ?? []
-}
-
 export default function IntersectionPanel({ intersection, onClose }: IntersectionPanelProps) {
+  const [worldEvents, setWorldEvents] = useState<WorldEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!intersection) { setWorldEvents([]); return }
+    setEventsLoading(true)
+    const { overlapStartYear, overlapEndYear } = intersection
+    fetch(`/api/events/world?start=${overlapStartYear}&end=${overlapEndYear}`)
+      .then((r) => r.json())
+      .then((data: WorldEvent[]) => setWorldEvents(Array.isArray(data) ? data : []))
+      .catch(() => setWorldEvents([]))
+      .finally(() => setEventsLoading(false))
+  }, [intersection?.personA.id, intersection?.personB.id])
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // fallback: select and copy manually
+    }
+  }
+
   if (!intersection) return null
 
-  const worldEvents = getWorldEvents(intersection)
   const { personA, personB, overlapStartYear, overlapEndYear, overlapYears } = intersection
 
   return (
@@ -47,7 +63,6 @@ export default function IntersectionPanel({ intersection, onClose }: Intersectio
         </div>
 
         <div className="px-6 pb-6">
-          {/* Divider */}
           <div className="mb-5" style={{ borderTop: '1px solid #2A2A3A' }} />
 
           {/* Overlap highlight */}
@@ -87,25 +102,30 @@ export default function IntersectionPanel({ intersection, onClose }: Intersectio
           </div>
 
           {/* World events */}
-          {worldEvents.length > 0 && (
-            <div className="mb-6" style={{ borderTop: '1px solid #2A2A3A', paddingTop: '16px' }}>
-              <p className="text-xs font-semibold tracking-wider mb-3" style={{ color: '#94A3B8' }}>
-                DURING THIS TIME
+          <div className="mb-6" style={{ borderTop: '1px solid #2A2A3A', paddingTop: '16px' }}>
+            <p className="text-xs font-semibold tracking-wider mb-3" style={{ color: '#94A3B8' }}>
+              DURING THIS TIME
+            </p>
+            {eventsLoading && (
+              <p className="text-sm" style={{ color: '#64748B' }}>Loading events…</p>
+            )}
+            {!eventsLoading && worldEvents.length === 0 && (
+              <p className="text-sm" style={{ color: '#64748B' }}>No notable events found.</p>
+            )}
+            {!eventsLoading && worldEvents.map((e, idx) => (
+              <p key={idx} className="text-sm mb-1.5" style={{ color: '#F1F1F5' }}>
+                · {e.year} — {e.label}
               </p>
-              {worldEvents.map((e) => (
-                <p key={e.year} className="text-sm mb-1.5" style={{ color: '#F1F1F5' }}>
-                  · {e.year} — {e.label}
-                </p>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
 
           {/* Share button */}
           <button
+            onClick={handleShare}
             className="w-full py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: '#F59E0B', color: '#0A0A0F' }}
           >
-            Share this moment
+            {copied ? '✓ Link copied!' : 'Share this moment'}
           </button>
         </div>
       </DialogContent>

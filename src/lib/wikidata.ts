@@ -18,6 +18,38 @@ export interface WikidataPerson {
   events: { year: number; title: string }[]
 }
 
+export interface WorldEvent {
+  year: number
+  label: string
+}
+
+export async function fetchWorldEvents(startYear: number, endYear: number): Promise<WorldEvent[]> {
+  // Military conflicts, assassinations, natural disasters, political crises, revolutions
+  const types = 'wd:Q180684 wd:Q350604 wd:Q8065 wd:Q2990 wd:Q16786317 wd:Q198 wd:Q40231'
+  const query = `
+    SELECT DISTINCT ?item ?itemLabel ?year WHERE {
+      VALUES ?type { ${types} }
+      ?item wdt:P31 ?type .
+      { ?item wdt:P585 ?date . } UNION { ?item wdt:P580 ?date . }
+      BIND(YEAR(?date) AS ?year)
+      FILTER(?year >= ${startYear} && ?year <= ${endYear})
+      ?item wikibase:sitelinks ?links .
+      FILTER(?links > 5)
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
+    }
+    ORDER BY DESC(?links)
+    LIMIT 8`
+  try {
+    const data = await sparql(query)
+    return ((data.results?.bindings ?? []) as Array<{ itemLabel: { value: string }; year: { value: string } }>)
+      .map((b) => ({ year: parseInt(b.year.value), label: b.itemLabel.value }))
+      .filter((e) => e.label.length > 3)
+      .sort((a, b) => a.year - b.year)
+  } catch {
+    return []
+  }
+}
+
 async function sparql(query: string) {
   const url = new URL(SPARQL)
   url.searchParams.set('query', query)

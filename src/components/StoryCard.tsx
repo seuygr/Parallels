@@ -12,6 +12,8 @@ interface StoryCardProps {
 export default function StoryCard({ event, person, onClose }: StoryCardProps) {
   if (!event || !person) return null
 
+  const city = event.locationName ? event.locationName.split(',')[0].toUpperCase() : null
+
   return (
     <Dialog open={!!event} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -24,9 +26,11 @@ export default function StoryCard({ event, person, onClose }: StoryCardProps) {
         <div className="p-6">
           {/* Location + date */}
           <div className="flex flex-col gap-1 mb-4">
-            <span className="text-sm" style={{ color: '#94A3B8' }}>
-              📍 {event.locationName}
-            </span>
+            {event.locationName ? (
+              <span className="text-sm" style={{ color: '#94A3B8' }}>
+                📍 {event.locationName}
+              </span>
+            ) : null}
             <span className="text-sm" style={{ color: '#94A3B8' }}>
               📅 {event.year}{event.month ? `, month ${event.month}` : ''}
             </span>
@@ -46,26 +50,27 @@ export default function StoryCard({ event, person, onClose }: StoryCardProps) {
           </h3>
 
           {/* Description */}
-          <p className="text-sm leading-relaxed" style={{ color: '#94A3B8', lineHeight: 1.6 }}>
-            {event.description}
-          </p>
+          {event.description && (
+            <p className="text-sm leading-relaxed" style={{ color: '#94A3B8', lineHeight: 1.6 }}>
+              {event.description}
+            </p>
+          )}
 
           {/* Also in section */}
-          <div className="mt-5 pt-4" style={{ borderTop: '1px solid #2A2A3A' }}>
-            <p className="text-xs font-semibold tracking-wider mb-3" style={{ color: '#94A3B8' }}>
-              ALSO IN {event.locationName.split(',')[0].toUpperCase()} · {event.year}
-            </p>
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
-              style={{ background: '#2A2A3A', color: '#F1F1F5' }}
-            >
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ background: person.color }}
-              />
-              Historical context available in v2
+          {city && (
+            <div className="mt-5 pt-4" style={{ borderTop: '1px solid #2A2A3A' }}>
+              <p className="text-xs font-semibold tracking-wider mb-3" style={{ color: '#94A3B8' }}>
+                ALSO IN {city} · {event.year}
+              </p>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
+                style={{ background: '#2A2A3A', color: '#F1F1F5' }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: person.color }} />
+                Geographic intersections available in v2
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

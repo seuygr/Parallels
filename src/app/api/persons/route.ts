@@ -24,7 +24,36 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { wikidataId, name, color } = await req.json()
+    const body = await req.json()
+    const { color } = body
+
+    // Personal profile creation (no Wikidata)
+    if (body.type === 'personal') {
+      const { name, bornYear, diedYear, bornCity } = body
+      if (!name || !bornYear) {
+        return NextResponse.json({ error: 'name and bornYear are required' }, { status: 400 })
+      }
+      const person = await prisma.person.create({
+        data: {
+          name,
+          bornYear: parseInt(String(bornYear)),
+          diedYear: diedYear ? parseInt(String(diedYear)) : null,
+          bornCity: bornCity ?? null,
+          type: 'personal',
+          isPublic: false,
+          color: color ?? '#94A3B8',
+        },
+        include: {
+          events: {
+            select: { id: true, personId: true, year: true, month: true, title: true, description: true, locationName: true },
+            orderBy: { year: 'asc' },
+          },
+        },
+      })
+      return NextResponse.json(person)
+    }
+
+    const { wikidataId, name } = body
     if (!wikidataId || !name) {
       return NextResponse.json({ error: 'wikidataId and name are required' }, { status: 400 })
     }
