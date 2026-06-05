@@ -138,6 +138,7 @@ function PersonSearchInput({
             return (
               <button
                 key={key}
+                data-testid="search-result"
                 onClick={() => handleSelect(r)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
                 style={{ borderBottom: '1px solid #2A2A3A22' }}

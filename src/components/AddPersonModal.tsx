@@ -217,6 +217,7 @@ export default function AddPersonModal({ onClose }: Props) {
                 return (
                   <button
                     key={key}
+                    data-testid="search-result"
                     onClick={() => handleAdd(r)}
                     disabled={added || isAdding}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"

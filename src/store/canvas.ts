@@ -38,6 +38,10 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     if (get().loaded) return
     const res = await fetch('/api/persons')
     const data = await res.json()
+    if (!Array.isArray(data)) {
+      console.error('[loadPublicPersons] unexpected response:', data)
+      return
+    }
     const persons: Person[] = data.map((p: Person & { events: LifeEvent[] }) => ({
       id: p.id,
       name: p.name,

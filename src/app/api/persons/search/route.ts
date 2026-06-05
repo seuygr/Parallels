@@ -8,11 +8,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const [dbPersons, wikidataResults] = await Promise.all([
+      // Catch DB errors so Wikidata results still return when DB is unavailable
       prisma.person.findMany({
         where: { name: { contains: q, mode: 'insensitive' } },
         select: { id: true, name: true, bornYear: true, diedYear: true, bornCity: true, bornCountry: true, type: true, color: true, wikidataId: true },
         take: 5,
-      }),
+      }).catch(() => [] as typeof dbPersons),
       searchWikidata(q),
     ])
 
