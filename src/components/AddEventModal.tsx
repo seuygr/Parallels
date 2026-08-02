@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useCanvasStore } from '@/store/canvas'
 import { Person } from '@/types'
+import { tr } from '@/lib/i18n'
 
 interface Props {
   person: Person
@@ -10,7 +11,8 @@ interface Props {
 }
 
 export default function AddEventModal({ person, onClose }: Props) {
-  const { addEvents } = useCanvasStore()
+  const { addEvents, language } = useCanvasStore()
+  const t = tr(language)
   const [year, setYear] = useState('')
   const [month, setMonth] = useState('')
   const [title, setTitle] = useState('')
@@ -69,7 +71,7 @@ export default function AddEventModal({ person, onClose }: Props) {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: person.color }} />
             <span className="text-sm font-medium" style={{ color: '#F1F1F5' }}>
-              Add event — {person.name}
+              {t.addEventTitle((language === 'zh' && person.nameZh) ? person.nameZh! : person.name)}
             </span>
           </div>
           <button onClick={onClose} style={{ color: '#94A3B8', fontSize: '18px' }}>×</button>
@@ -78,18 +80,18 @@ export default function AddEventModal({ person, onClose }: Props) {
         <div className="p-5 flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Year *</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.yearLabel}</label>
               <input
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                placeholder="e.g. 1949"
+                placeholder={t.yearPlaceholder}
                 type="number"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                 style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
               />
             </div>
             <div style={{ width: '80px' }}>
-              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Month</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.monthLabel}</label>
               <input
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
@@ -104,33 +106,33 @@ export default function AddEventModal({ person, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>What happened? *</label>
+            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.whatHappenedLabel}</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Moved to Hong Kong"
+              placeholder={t.whatHappenedPlaceholder}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Location</label>
+            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.locationLabel}</label>
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Hong Kong"
+              placeholder={t.locationPlaceholder}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Story</label>
+            <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.storyLabel}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell the story behind this moment…"
+              placeholder={t.storyPlaceholder}
               rows={3}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
               style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
@@ -145,7 +147,7 @@ export default function AddEventModal({ person, onClose }: Props) {
             className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ background: person.color, color: '#0A0A0F' }}
           >
-            {saving ? 'Saving…' : 'Save event'}
+            {saving ? t.saving : t.saveEvent}
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useCanvasStore } from '@/store/canvas'
 import { Person, LifeEvent } from '@/types'
+import { tr } from '@/lib/i18n'
 
 const COLORS = ['#F59E0B', '#60A5FA', '#A78BFA', '#34D399', '#F87171', '#FB923C', '#E879F9', '#2DD4BF']
 
@@ -49,7 +50,8 @@ export default function AddPersonModal({ onClose }: Props) {
   const [creating, setCreating] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const { persons, addPerson, addEvents } = useCanvasStore()
+  const { persons, addPerson, addEvents, language } = useCanvasStore()
+  const t = tr(language)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -89,8 +91,9 @@ export default function AddPersonModal({ onClose }: Props) {
     try {
       if (r.source === 'local') {
         const res = await fetch(`/api/persons/${r.id}/events`)
-        const events: LifeEvent[] = await res.json()
-        addPerson({ id: r.id, name: r.name, bornYear: r.bornYear, diedYear: r.diedYear, bornCity: r.bornCity ?? '', bornCountry: r.bornCountry ?? '', type: r.type as 'famous' | 'personal', color: r.color || color })
+        const payload = await res.json()
+        const events: LifeEvent[] = Array.isArray(payload) ? payload : []
+        addPerson({ id: r.id, name: r.name, nameZh: null, bornYear: r.bornYear, diedYear: r.diedYear, bornCity: r.bornCity ?? '', bornCityZh: null, bornCountry: r.bornCountry ?? '', bornCountryZh: null, type: r.type as 'famous' | 'personal', color: r.color || color })
         addEvents(events)
       } else {
         const res = await fetch('/api/persons', {
@@ -103,10 +106,13 @@ export default function AddPersonModal({ onClose }: Props) {
         const person: Person = {
           id: data.id,
           name: data.name,
+          nameZh: data.nameZh ?? null,
           bornYear: data.bornYear,
           diedYear: data.diedYear,
           bornCity: data.bornCity ?? '',
+          bornCityZh: data.bornCityZh ?? null,
           bornCountry: data.bornCountry ?? '',
+          bornCountryZh: data.bornCountryZh ?? null,
           type: data.type,
           color: data.color,
         }
@@ -143,10 +149,13 @@ export default function AddPersonModal({ onClose }: Props) {
       addPerson({
         id: data.id,
         name: data.name,
+        nameZh: null,
         bornYear: data.bornYear,
         diedYear: data.diedYear,
         bornCity: data.bornCity ?? '',
+        bornCityZh: null,
         bornCountry: '',
+        bornCountryZh: null,
         type: 'personal',
         color: data.color,
       })
@@ -171,18 +180,18 @@ export default function AddPersonModal({ onClose }: Props) {
       >
         {/* Tab header */}
         <div className="flex" style={{ borderBottom: '1px solid #2A2A3A' }}>
-          {(['search', 'create'] as const).map((t) => (
+          {(['search', 'create'] as const).map((tab_) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tab_}
+              onClick={() => setTab(tab_)}
               className="flex-1 py-3 text-xs font-medium transition-colors"
               style={{
-                color: tab === t ? '#F1F1F5' : '#94A3B8',
-                borderBottom: tab === t ? '2px solid #F59E0B' : '2px solid transparent',
+                color: tab === tab_ ? '#F1F1F5' : '#94A3B8',
+                borderBottom: tab === tab_ ? '2px solid #F59E0B' : '2px solid transparent',
                 background: 'transparent',
               }}
             >
-              {t === 'search' ? '🔍 Search' : '+ Create profile'}
+              {tab_ === 'search' ? t.searchTab : t.createTab}
             </button>
           ))}
         </div>
@@ -195,20 +204,20 @@ export default function AddPersonModal({ onClose }: Props) {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for a person…"
+                placeholder={t.searchPlaceholder}
                 className="w-full bg-transparent outline-none text-sm"
                 style={{ color: '#F1F1F5' }}
               />
             </div>
             <div className="max-h-80 overflow-y-auto">
               {loading && (
-                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>Searching…</div>
+                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>{t.searching}</div>
               )}
               {!loading && query.length >= 2 && results.length === 0 && (
-                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>No results found.</div>
+                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>{t.noResults}</div>
               )}
               {!loading && query.length < 2 && (
-                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>Type at least 2 characters to search.</div>
+                <div className="px-4 py-3 text-xs" style={{ color: '#94A3B8' }}>{t.typeToSearch}</div>
               )}
               {results.map((r) => {
                 const key = r.source === 'local' ? r.id : r.wikidataId
@@ -247,7 +256,7 @@ export default function AddPersonModal({ onClose }: Props) {
                       </div>
                     </div>
                     <span className="text-xs flex-shrink-0" style={{ color: '#94A3B8' }}>
-                      {isAdding ? 'Adding…' : added ? 'Added' : '+ Add'}
+                      {isAdding ? t.adding : added ? t.added : t.add}
                     </span>
                   </button>
                 )
@@ -260,11 +269,11 @@ export default function AddPersonModal({ onClose }: Props) {
         {tab === 'create' && (
           <div className="p-5 flex flex-col gap-4">
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Name *</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.nameLabel}</label>
               <input
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                placeholder="e.g. Grandmother Wei"
+                placeholder={t.namePlaceholder}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                 style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
               />
@@ -272,22 +281,22 @@ export default function AddPersonModal({ onClose }: Props) {
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Born *</label>
+                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.bornLabel}</label>
                 <input
                   value={createBornYear}
                   onChange={(e) => setCreateBornYear(e.target.value)}
-                  placeholder="e.g. 1928"
+                  placeholder={t.bornPlaceholder}
                   type="number"
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                   style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Birthplace</label>
+                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.birthplaceLabel}</label>
                 <input
                   value={createBornCity}
                   onChange={(e) => setCreateBornCity(e.target.value)}
-                  placeholder="e.g. Shanghai"
+                  placeholder={t.birthplacePlaceholder}
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                   style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
                 />
@@ -295,7 +304,7 @@ export default function AddPersonModal({ onClose }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs mb-2" style={{ color: '#94A3B8' }}>Still alive?</label>
+              <label className="block text-xs mb-2" style={{ color: '#94A3B8' }}>{t.stillAlive}</label>
               <div className="flex gap-2">
                 {[true, false].map((v) => (
                   <button
@@ -308,7 +317,7 @@ export default function AddPersonModal({ onClose }: Props) {
                       border: `1px solid ${stillAlive === v ? '#F59E0B44' : '#3A3A4A'}`,
                     }}
                   >
-                    {v ? 'Yes' : 'No'}
+                    {v ? t.yes : t.no}
                   </button>
                 ))}
               </div>
@@ -316,11 +325,11 @@ export default function AddPersonModal({ onClose }: Props) {
 
             {!stillAlive && (
               <div>
-                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>Passed away</label>
+                <label className="block text-xs mb-1.5" style={{ color: '#94A3B8' }}>{t.passedAway}</label>
                 <input
                   value={createDiedYear}
                   onChange={(e) => setCreateDiedYear(e.target.value)}
-                  placeholder="e.g. 2005"
+                  placeholder={t.diedPlaceholder}
                   type="number"
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                   style={{ background: '#2A2A3A', color: '#F1F1F5', border: '1px solid #3A3A4A' }}
@@ -334,7 +343,7 @@ export default function AddPersonModal({ onClose }: Props) {
               className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: '#F59E0B', color: '#0A0A0F' }}
             >
-              {creating ? 'Creating…' : 'Add to canvas →'}
+              {creating ? t.creating : t.addToCanvas}
             </button>
           </div>
         )}
