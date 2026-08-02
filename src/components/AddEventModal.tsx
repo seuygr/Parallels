@@ -47,6 +47,7 @@ export default function AddEventModal({ person, onClose }: Props) {
         title: data.title,
         description: data.description ?? '',
         locationName: data.locationName ?? '',
+        importance: data.importance ?? 2,
       }])
       onClose()
     } catch (err) {

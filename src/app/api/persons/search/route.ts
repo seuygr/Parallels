@@ -7,13 +7,15 @@ export async function GET(req: NextRequest) {
   if (q.length < 2) return NextResponse.json({ local: [], wikidata: [] })
 
   try {
+    // Catch DB errors so Wikidata results still return when DB is unavailable
+    const dbPersonsQuery = prisma.person.findMany({
+      where: { name: { contains: q, mode: 'insensitive' } },
+      select: { id: true, name: true, bornYear: true, diedYear: true, bornCity: true, bornCountry: true, type: true, color: true, wikidataId: true },
+      take: 5,
+    })
+
     const [dbPersons, wikidataResults] = await Promise.all([
-      // Catch DB errors so Wikidata results still return when DB is unavailable
-      prisma.person.findMany({
-        where: { name: { contains: q, mode: 'insensitive' } },
-        select: { id: true, name: true, bornYear: true, diedYear: true, bornCity: true, bornCountry: true, type: true, color: true, wikidataId: true },
-        take: 5,
-      }).catch(() => [] as typeof dbPersons),
+      dbPersonsQuery.catch(() => [] as Awaited<typeof dbPersonsQuery>),
       searchWikidata(q),
     ])
 
