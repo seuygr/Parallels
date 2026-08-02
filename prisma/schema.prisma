@@ -21,12 +21,15 @@ model User {
 model Person {
   id          String   @id @default(uuid())
   name        String
+  nameZh      String?
   bornYear    Int
   bornPrecision String @default("year")
   diedYear    Int?
   diedPrecision String?
   bornCity    String?
+  bornCityZh  String?
   bornCountry String?
+  bornCountryZh String?
   type        String   @default("personal") // "famous" | "personal"
   wikidataId  String?  @unique
   isPublic    Boolean  @default(false)
@@ -46,10 +49,14 @@ model LifeEvent {
   year        Int
   month       Int?
   title       String
+  titleZh     String?
   description String?
+  descriptionZh String?
   locationName String?
+  locationNameZh String?
   locationLat Float?
   locationLng Float?
+  importance  Int      @default(2)       // 1=always shown, 2=medium zoom, 3=zoomed in only
   source      String   @default("user") // "wikidata" | "user"
   wikidataEventId String?
   createdAt   DateTime @default(now())
