@@ -3,7 +3,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { useCanvasStore } from '@/store/canvas'
 import { computeAllIntersections } from '@/lib/intersection'
-import { LifeEvent, Intersection, Person } from '@/types'
+import { LifeEvent, Intersection, Person, Language } from '@/types'
 
 const LABEL_WIDTH = 180
 const TRACK_HEIGHT = 90
@@ -16,12 +16,13 @@ interface Props {
   onEventClick: (event: LifeEvent) => void
   onIntersectionClick: (intersection: Intersection) => void
   onAddEvent?: (person: Person) => void
+  language?: Language
 }
 
-export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAddEvent }: Props) {
+export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAddEvent, language = 'en' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(1000)
-  const { persons, events, visibleRange, zoom, pan } = useCanvasStore()
+  const { persons, events, visibleRange, pan, removePerson } = useCanvasStore()
   const intersections = computeAllIntersections(persons)
 
   const isDragging = useRef(false)
@@ -44,25 +45,11 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
     return LABEL_WIDTH + ((year - start) / (end - start)) * canvasWidth
   }, [visibleRange, canvasWidth])
 
-  const xToYear = useCallback((x: number) => {
-    const { start, end } = visibleRange
-    return start + ((x - LABEL_WIDTH) / canvasWidth) * (end - start)
-  }, [visibleRange, canvasWidth])
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const mouseX = e.clientX - rect.left
-    const centerYear = xToYear(mouseX)
-    const factor = e.deltaY > 0 ? 1.15 : 0.87
-    zoom(factor, centerYear)
-  }, [xToYear, zoom])
-
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     isDragging.current = true
     dragStartX.current = e.clientX
     dragStartRange.current = visibleRange
+    if (containerRef.current) containerRef.current.style.cursor = 'grabbing'
   }, [visibleRange])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -76,11 +63,21 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
 
   const handleMouseUp = useCallback(() => {
     isDragging.current = false
+    if (containerRef.current) containerRef.current.style.cursor = 'grab'
   }, [])
 
-  // Year ticks
+  // LOD: which importance levels to show based on zoom
   const span = visibleRange.end - visibleRange.start
-  const tickInterval = span > 200 ? 50 : span > 80 ? 20 : span > 30 ? 10 : 5
+  const maxImportance = span > 300 ? 1 : span > 100 ? 2 : 3
+
+  // Year ticks — target ~6 visible ticks at any zoom level
+  const tickInterval =
+    span > 2000 ? 500 :
+    span > 800  ? 200 :
+    span > 400  ? 100 :
+    span > 200  ?  50 :
+    span > 80   ?  20 :
+    span > 30   ?  10 : 5
   const firstTick = Math.ceil(visibleRange.start / tickInterval) * tickInterval
   const ticks: number[] = []
   for (let y = firstTick; y <= visibleRange.end; y += tickInterval) ticks.push(y)
@@ -91,8 +88,7 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
     <div
       ref={containerRef}
       className="w-full h-full select-none"
-      style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
-      onWheel={handleWheel}
+      style={{ cursor: 'grab' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -162,7 +158,7 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
           const barX1 = Math.max(yearToX(person.bornYear), LABEL_WIDTH)
           const barX2 = Math.min(yearToX(personEnd), width)
           const barWidth = Math.max(0, barX2 - barX1)
-          const personEvents = events.filter((e) => e.personId === person.id)
+          const personEvents = events.filter((e) => e.personId === person.id && e.importance <= maxImportance)
           const isPersonal = person.type === 'personal'
 
           return (
@@ -171,7 +167,7 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
               <text x={LABEL_WIDTH - 12} y={trackY + 22}
                 textAnchor="end" fill="#F1F1F5" fontSize={13}
                 fontFamily="Inter, sans-serif" fontWeight="500">
-                {person.name}
+                {(language === 'zh' && person.nameZh) ? person.nameZh : person.name}
               </text>
               <text x={LABEL_WIDTH - 12} y={trackY + 38}
                 textAnchor="end" fill="#94A3B8" fontSize={11}
@@ -191,6 +187,22 @@ export default function TimelineCanvas({ onEventClick, onIntersectionClick, onAd
                   + add event
                 </text>
               )}
+
+              {/* Remove × button */}
+              <g
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => { e.stopPropagation(); removePerson(person.id) }}
+              >
+                <rect x={width - 32} y={trackY + 8} width={24} height={24} fill="transparent" />
+                <text
+                  x={width - 20} y={trackY + 23}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fill="#64748B" fontSize={16} fontFamily="Inter, sans-serif"
+                  style={{ userSelect: 'none' }}
+                >
+                  ×
+                </text>
+              </g>
 
               {/* Track background strip */}
               <rect x={LABEL_WIDTH} y={trackY + 16} width={canvasWidth}
