@@ -6,7 +6,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const events = await prisma.lifeEvent.findMany({
       where: { personId: id },
-      select: { id: true, personId: true, year: true, month: true, title: true, description: true, locationName: true },
+      select: { id: true, personId: true, year: true, month: true, title: true, titleZh: true, description: true, descriptionZh: true, locationName: true, locationNameZh: true, importance: true },
       orderBy: { year: 'asc' },
     })
     return NextResponse.json(events)
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         locationName: locationName || null,
         source: 'user',
       },
-      select: { id: true, personId: true, year: true, month: true, title: true, description: true, locationName: true },
+      select: { id: true, personId: true, year: true, month: true, title: true, titleZh: true, description: true, descriptionZh: true, locationName: true, locationNameZh: true, importance: true },
     })
     return NextResponse.json(event)
   } catch (err) {
